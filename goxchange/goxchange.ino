@@ -11,7 +11,6 @@ int currentUserCount = 0;
 int currentStudentCount = 0;
 
 const byte BUTTON_PIN = 8;
-const byte TOUCH_PIN = 5;
 
 rgb_lcd lcd;
 HttpClient http;
@@ -25,14 +24,13 @@ void setup() {
   Bridge.begin();
 
   pinMode(BUTTON_PIN, OUTPUT);
-  pinMode(TOUCH_PIN, INPUT);
 
   SetupFinish();
   GetUserCount();
 }
 
 void loop() {
-  CheckTouchValue();
+  CheckButtonValue();
 
   long curTime = now();
   if (curTime % 10 == 0) GetUserCount();
@@ -60,13 +58,11 @@ void ClearLCD() {
   lcd.clear();
 }
 
-void CheckTouchValue() {
-  int tchVal = digitalRead(TOUCH_PIN);
+void CheckButtonValue() {
+  int btnVal = digitalRead(BUTTON_PIN);
 
-  if (tchVal == 1) {
-    Serial.println("Touch On");
-    while (digitalRead(TOUCH_PIN) == 1);
-
+  if (btnVal == 1) {
+    while (digitalRead(BUTTON_PIN) == 1);
     GetUniInfo();
   }
 }
