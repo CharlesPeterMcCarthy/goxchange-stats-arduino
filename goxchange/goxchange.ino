@@ -9,6 +9,8 @@
 boolean isStartup;
 boolean soundOn = true;
 int currentUserCount = 0;
+int currentStudentCount = 0;
+
 const byte BUTTON_PIN = 8;
 const byte TOUCH_PIN = 5;
 const byte SOUND_PIN = 6;
@@ -19,6 +21,8 @@ Process linux;
 
 void setup() {
   isStartup = true;
+  SetupStart();
+  
   Serial.begin(9600);
   Bridge.begin();
 
@@ -26,10 +30,8 @@ void setup() {
   pinMode(TOUCH_PIN, INPUT);
   pinMode(SOUND_PIN, INPUT);
 
-  delay(1000);
-
-  SetupLCD();
-  ClearLCD();
+  SetupFinish();
+  GetUserCount();
 }
 
 void loop() {
@@ -42,11 +44,16 @@ void loop() {
   delay(1);
 }
 
-void SetupLCD() {
+void SetupStart() {
   lcd.begin(16,2);
   DefaultColorLCD();
   lcd.print("Starting Up...");
-  delay(2000);
+}
+
+void SetupFinish() {
+  lcd.setCursor(0, 1);
+  lcd.print("Ready.");
+  delay(1000);
 }
 
 void DefaultColorLCD() {
@@ -86,7 +93,7 @@ void CheckTouchValue() {
 
 void GetUserCount() {
   Serial.println("Call User Count");
-  StaticJsonBuffer<200> jsonBuffer;
+  DynamicJsonBuffer jsonBuffer;
   String response = "";
 
   linux.begin("curl");
@@ -113,6 +120,7 @@ void GetUserCount() {
 
 void SortInformation(JsonObject& info) {
   int updatedUserCount = info["users"];
+  int updatedStudentCount = info["students"];
 
   if (!isStartup && updatedUserCount > currentUserCount) {
     int diff = updatedUserCount - currentUserCount;
@@ -121,11 +129,8 @@ void SortInformation(JsonObject& info) {
     FlashScreen();
   }
 
-//  int diff = 3;
-//  FlashScreen();
-//  if (soundOn) SoundAlert(diff);
-
   currentUserCount = updatedUserCount;
+  currentStudentCount = updatedStudentCount;
   
   PrintCurrentCount();
 }
@@ -133,8 +138,11 @@ void SortInformation(JsonObject& info) {
 void PrintCurrentCount() {
   ClearLCD();
   lcd.setCursor(0, 0);
-  lcd.print("User Count: ");
+  lcd.print("Users: ");
   lcd.print(currentUserCount);
+  lcd.setCursor(0, 1);
+  lcd.print("Students: ");
+  lcd.print(currentStudentCount);
 }
 
 void SoundAlert(int diff) {
@@ -165,6 +173,11 @@ void GetUniInfo() {
   DynamicJsonBuffer jsonBuffer;
   String response = "";
 
+  ClearLCD();
+  lcd.print("Gathering");
+  lcd.setCursor(0, 1);
+  lcd.print("Uni Info");
+  
   linux.begin("curl");
   linux.addParameter("-X");
   linux.addParameter("POST");
@@ -203,4 +216,6 @@ void GetUniInfo() {
   
     delay(4000);
   }
+
+  PrintCurrentCount();
 }
