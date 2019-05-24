@@ -16,6 +16,8 @@ void setup() {
   Serial.begin(9600);
   Bridge.begin();
 
+  pinMode(6, OUTPUT);
+
   delay(1000);
 
   setupLCD();
@@ -63,10 +65,24 @@ void clearLCD() {
 
 void SortInformation(JsonObject& info) {
   clearLCD();
-  currentUserCount = info["users"];
+  int updatedUserCount = info["users"];
+  Serial.println(isStartup);
+  if (!isStartup && updatedUserCount > currentUserCount) {
+    currentUserCount = updatedUserCount;
+    
+    PlaySound();
+  }
+  
+  currentUserCount = updatedUserCount;
   
   lcd.setCursor(0, 0);
   lcd.print("User Count: ");
   //lcd.setCursor(0, 1);
   lcd.print(currentUserCount);
+}
+
+void PlaySound() {
+  digitalWrite(6, HIGH);
+  delay(10);
+  digitalWrite(6, LOW);
 }
