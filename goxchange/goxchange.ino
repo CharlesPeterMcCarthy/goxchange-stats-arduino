@@ -7,13 +7,11 @@
 #include <TimeLib.h>
 
 boolean isStartup;
-boolean soundOn = true;
 int currentUserCount = 0;
 int currentStudentCount = 0;
 
 const byte BUTTON_PIN = 8;
 const byte TOUCH_PIN = 5;
-const byte SOUND_PIN = 6;
 
 rgb_lcd lcd;
 HttpClient http;
@@ -28,14 +26,12 @@ void setup() {
 
   pinMode(BUTTON_PIN, OUTPUT);
   pinMode(TOUCH_PIN, INPUT);
-  pinMode(SOUND_PIN, INPUT);
 
   SetupFinish();
   GetUserCount();
 }
 
 void loop() {
-  CheckButtonValue();
   CheckTouchValue();
 
   long curTime = now();
@@ -62,22 +58,6 @@ void DefaultColorLCD() {
 
 void ClearLCD() {
   lcd.clear();
-}
-
-void CheckButtonValue() {
-  int btnVal = digitalRead(BUTTON_PIN);
-
-  if (btnVal == 1) {
-    Serial.println("Button On");
-    while (digitalRead(BUTTON_PIN) == 1);
-
-    soundOn = !soundOn;
-    ClearLCD();
-    lcd.setCursor(0, 0);
-    lcd.print(soundOn ? "Sound is on" : "Sound is off");
-    delay(1000);
-    PrintCurrentCount();
-  }
 }
 
 void CheckTouchValue() {
@@ -124,8 +104,6 @@ void SortInformation(JsonObject& info) {
 
   if (!isStartup && updatedUserCount > currentUserCount) {
     int diff = updatedUserCount - currentUserCount;
-    
-    if (soundOn) SoundAlert(diff);
     FlashScreen();
   }
 
@@ -143,19 +121,6 @@ void PrintCurrentCount() {
   lcd.setCursor(0, 1);
   lcd.print("Students: ");
   lcd.print(currentStudentCount);
-}
-
-void SoundAlert(int diff) {
-  for (int i = 0; i < diff; i++) {
-    PlaySound();
-    delay(500);
-  }  
-}
-
-void PlaySound() {
-  digitalWrite(SOUND_PIN, HIGH);
-  delay(10);
-  digitalWrite(SOUND_PIN, LOW);
 }
 
 void FlashScreen() {
