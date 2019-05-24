@@ -10,6 +10,7 @@ boolean isStartup;
 boolean soundOn = true;
 int currentUserCount = 0;
 const byte BUTTON_PIN = 8;
+const byte TOUCH_PIN = 5;
 const byte SOUND_PIN = 6;
 
 rgb_lcd lcd;
@@ -21,7 +22,9 @@ void setup() {
   Serial.begin(9600);
   Bridge.begin();
 
-  pinMode(SOUND_PIN, OUTPUT);
+  pinMode(BUTTON_PIN, OUTPUT);
+  pinMode(TOUCH_PIN, INPUT);
+  pinMode(SOUND_PIN, INPUT);
 
   delay(1000);
 
@@ -30,10 +33,11 @@ void setup() {
 }
 
 void loop() {
-  checkButtonValue();
+  CheckButtonValue();
+  CheckTouchValue();
 
   long curTime = now();
-  if (curTime % 10 == 0) CallAPI();
+  if (curTime % 10 == 0) GetUserCount();
     
   delay(1);
 }
@@ -53,14 +57,14 @@ void ClearLCD() {
   lcd.clear();
 }
 
-void checkButtonValue() {
+void CheckButtonValue() {
   int btnVal = digitalRead(BUTTON_PIN);
 
-  if (btnVal == 1) {                        // Button has been pressed
+  if (btnVal == 1) {
     Serial.println("Button On");
-    while (digitalRead(BUTTON_PIN) == 1);   // Wait until button is not being pressed
+    while (digitalRead(BUTTON_PIN) == 1);
 
-    soundOn = !soundOn;                 // Sound on / off
+    soundOn = !soundOn;
     ClearLCD();
     lcd.setCursor(0, 0);
     lcd.print(soundOn ? "Sound is on" : "Sound is off");
@@ -69,8 +73,19 @@ void checkButtonValue() {
   }
 }
 
-void CallAPI() {
-  Serial.println("Call");
+void CheckTouchValue() {
+  int tchVal = digitalRead(TOUCH_PIN);
+
+  if (tchVal == 1) {
+    Serial.println("Touch On");
+    while (digitalRead(TOUCH_PIN) == 1);
+
+    GetUniInfo();
+  }
+}
+
+void GetUserCount() {
+  Serial.println("Call User Count");
   StaticJsonBuffer<200> jsonBuffer;
   String response = "";
 
@@ -79,7 +94,7 @@ void CallAPI() {
   linux.addParameter("POST");
   linux.addParameter("-H");
   linux.addParameter("Content-Type: application/x-www-form-urlencoded");
-  linux.addParameter("https://next.goxchange.io/api/usercount");
+  linux.addParameter("https://next.goxchange.io/api/user-count");
   linux.runAsynchronously();
   
   while (linux.running());
@@ -105,6 +120,10 @@ void SortInformation(JsonObject& info) {
     if (soundOn) SoundAlert(diff);
     FlashScreen();
   }
+
+//  int diff = 3;
+//  FlashScreen();
+//  if (soundOn) SoundAlert(diff);
 
   currentUserCount = updatedUserCount;
   
@@ -138,5 +157,50 @@ void FlashScreen() {
     lcd.setRGB(255, 0, 63); 
     delay(100);
   }
-  lcd.setRGB(39, 168, 173);
+  DefaultColorLCD();
+}
+
+void GetUniInfo() {
+  Serial.println("Call Uni Info");
+  DynamicJsonBuffer jsonBuffer;
+  String response = "";
+
+  linux.begin("curl");
+  linux.addParameter("-X");
+  linux.addParameter("POST");
+  linux.addParameter("-H");
+  linux.addParameter("Content-Type: application/x-www-form-urlencoded");
+  linux.addParameter("https://next.goxchange.io/api/uni-info");
+  linux.runAsynchronously();
+  
+  while (linux.running());
+  while (linux.available()) {
+    Serial.println("read");
+    response += linux.readString();
+  }
+
+  Serial.println(response);
+  Serial.flush();
+
+  char charBuf[response.length()+1];
+  response.toCharArray(charBuf, response.length()+1);
+  JsonArray& unis = jsonBuffer.parseArray(charBuf);
+
+  for (auto& uni : unis) {
+    String uniName = uni["uni"];
+    int users = uni["users"];
+    int students = uni["students"];
+
+    ClearLCD();
+    
+    lcd.setCursor(0, 0);
+    lcd.print(uniName);
+    lcd.setCursor(0, 1);
+    lcd.print("U: ");
+    lcd.print(users);
+    lcd.print(" - S: ");
+    lcd.print(students);
+  
+    delay(4000);
+  }
 }
