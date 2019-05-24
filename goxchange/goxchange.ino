@@ -67,28 +67,12 @@ void CheckButtonValue() {
   }
 }
 
-void GetUserCount() {
-  Serial.println("Call User Count");
-  DynamicJsonBuffer jsonBuffer;
-  String response = "";
-
-  linux.begin("curl");
-  linux.addParameter("-X");
-  linux.addParameter("POST");
-  linux.addParameter("-H");
-  linux.addParameter("Content-Type: application/x-www-form-urlencoded");
-  linux.addParameter("https://next.goxchange.io/api/user-count");
-  linux.runAsynchronously();
+void GetUserCount() {  
+  String response = APICall("user-count");
   
-  while (linux.running());
-  while (linux.available()) {
-    response += linux.readString();
-  }
-
-  Serial.println(response);
-  Serial.flush();
-
+  DynamicJsonBuffer jsonBuffer;
   JsonObject& json = jsonBuffer.parseObject(response);
+  
   SortInformation(json);
   
   if (isStartup) isStartup = false;
@@ -130,34 +114,16 @@ void FlashScreen() {
 }
 
 void GetUniInfo() {
-  Serial.println("Call Uni Info");
-  DynamicJsonBuffer jsonBuffer;
-  String response = "";
-
   ClearLCD();
   lcd.print("Gathering");
   lcd.setCursor(0, 1);
   lcd.print("Uni Info");
-  
-  linux.begin("curl");
-  linux.addParameter("-X");
-  linux.addParameter("POST");
-  linux.addParameter("-H");
-  linux.addParameter("Content-Type: application/x-www-form-urlencoded");
-  linux.addParameter("https://next.goxchange.io/api/uni-info");
-  linux.runAsynchronously();
-  
-  while (linux.running());
-  while (linux.available()) {
-    Serial.println("read");
-    response += linux.readString();
-  }
 
-  Serial.println(response);
-  Serial.flush();
-
+  String response = APICall("uni-info");
   char charBuf[response.length()+1];
   response.toCharArray(charBuf, response.length()+1);
+
+  DynamicJsonBuffer jsonBuffer;
   JsonArray& unis = jsonBuffer.parseArray(charBuf);
 
   for (auto& uni : unis) {
@@ -166,17 +132,36 @@ void GetUniInfo() {
     int students = uni["students"];
 
     ClearLCD();
+
+    String output = "Acc: " + String(users) + " (" + String(students) + ")";
     
     lcd.setCursor(0, 0);
     lcd.print(uniName);
     lcd.setCursor(0, 1);
-    lcd.print("U: ");
-    lcd.print(users);
-    lcd.print(" - S: ");
-    lcd.print(students);
+    lcd.print(output);
   
     delay(4000);
   }
 
   PrintCurrentCount();
+}
+
+String APICall(String req) {
+  String response = "";
+  String apiURL = "https://next.goxchange.io/api/" + req;
+  
+  linux.begin("curl");
+  linux.addParameter("-X");
+  linux.addParameter("POST");
+  linux.addParameter("-H");
+  linux.addParameter("Content-Type: application/x-www-form-urlencoded");
+  linux.addParameter(apiURL);
+  linux.runAsynchronously();
+  
+  while (linux.running());
+  while (linux.available()) response += linux.readString();
+
+  Serial.flush();
+
+  return response;
 }
